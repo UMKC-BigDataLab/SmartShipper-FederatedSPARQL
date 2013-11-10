@@ -9,6 +9,10 @@ import com.hp.hpl.jena.rdf.model.*;
 import com.hp.hpl.jena.sparql.algebra.Algebra;
 import com.hp.hpl.jena.sparql.algebra.Op;
 import com.hp.hpl.jena.sparql.algebra.OpAsQuery;
+import com.hp.hpl.jena.sparql.algebra.OpWalker;
+import com.hp.hpl.jena.sparql.algebra.Transform;
+import com.hp.hpl.jena.sparql.algebra.TransformCopy;
+import com.hp.hpl.jena.sparql.algebra.Transformer;
 import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpFilter;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
@@ -50,19 +54,50 @@ public class TesterRDF {
 	public static void main(String arg[])	{
 		
 		
-		//org.apache.jena.atlas.logging.Log.setLog4j();
-		//BasicConfigurator.configure();
-		//ARQ.setExecutionLogging(Explain.InfoLevel.ALL) ;
+		org.apache.jena.atlas.logging.Log.setLog4j();
+		BasicConfigurator.configure();
+		ARQ.setExecutionLogging(Explain.InfoLevel.ALL) ;
 		//FileHandler fileHandler = new FileHandler("myLogFile");
 		//ARQ.getExecLogger().addHandler(fileHandler);
 		//askRemote();
 		//modelFromFile();
+		
 		//algebraStuff();
 		
-		executeAlgebra();
+		//executeAlgebra();
 		
+		
+		//transformStuff();
+		
+		testingWalker();
+	}
+	
+	static void testingWalker()	{
+		Var var_x = Var.alloc("x");
+		Var var_z = Var.alloc("z");
+		
+		Op op = makePretendAlgebra(var_x, var_z);
+		System.out.println(op.getClass());
+		System.out.println(op);
+		OpWalker.walk(op, new FakeOpVisitor());	//still not entirely sure what a visitor is supposed to do. :(
 		
 	}
+	
+	static void transformStuff()	{
+		Var var_x = Var.alloc("x");
+		Var var_z = Var.alloc("z");
+		Op op = makePretendAlgebra(var_x, var_z);
+		
+		//Provided transform thing.
+		Transform thing = new TransformCopy(true);	//supposed to make a deep copy of the algebra??
+		op = Transformer.transform(thing, op);
+		System.out.println(op);
+		
+		Transform myT = new FakeTransform();
+		op = Transformer.transform(myT, op);
+		System.out.println(op);
+	}
+	
 	
 	static Model makeModel()	{
 		String BASE = "http://example/";
@@ -94,6 +129,7 @@ public class TesterRDF {
 		
 		Var var_x = Var.alloc("x");
 		Var var_z = Var.alloc("z");
+		
 		Op op = makePretendAlgebra(var_x, var_z);
 		
 		Model m = makeModel();
@@ -133,6 +169,7 @@ public class TesterRDF {
 		
 		//build some lovely expressions
 		bp.add(new Triple(var_x, NodeFactory.createURI(BASE + "p"), var_z));
+		bp.add(new Triple(var_x, NodeFactory.createURI(BASE + "q"), var_z));
 		System.out.println("basic pattern: " + bp);
 		
 		//convert basicpattern -> algebra expression
@@ -145,16 +182,19 @@ public class TesterRDF {
 		op = OpFilter.filter(expr, op);
 		System.out.println("after applying filter: \n" + op);
 		
+		System.out.println("End makePretendAlgebra()");
 		return op;
 	}
 	static void algebraStuff()	{
 		
-		Query query = QueryFactory.read("file:/Users/vptarmigan/ANAPSID/federatedYears_sparql11.query");
-		
+		//Query query = QueryFactory.read("file:/Users/vptarmigan/ANAPSID/federatedYears_sparql11.query");
+		Query query = QueryFactory.read("file:/Users/vptarmigan/ANAPSID/singleService.query");
 		
 		//convert query -> algebra
 		Op op = Algebra.compile(query);
+		System.out.println(op.getClass());
 		System.out.println(op);
+		
 		
 		//convert algebra -> back to qu ery
 		//interesing -> 
@@ -163,7 +203,7 @@ public class TesterRDF {
 		
 		//let's look at dealing with SSE itself
 		Op op2 = SSE.parseOp("(bgp (?s ?p ?o))");
-		System.out.println(op2);
+		//System.out.println(op2);
 		
 		
 	}
@@ -226,7 +266,10 @@ public class TesterRDF {
 			Query query = QueryFactory.read("file:/Users/vptarmigan/ANAPSID/federatedYears_sparql11.query");
 			//QueryExecution qexec = QueryExecutionFactory.sparqlService("http://dbpedia.org/sparql", query);
 			
+			
 			QueryExecution qexec = QueryExecutionFactory.create(query, model);
+			System.out.println("QueryExecutionFactory create - > \n" + qexec.toString());
+			
 			ResultSet results = qexec.execSelect();
 			System.out.println(ResultSetFormatter.asText(results));
 		}
