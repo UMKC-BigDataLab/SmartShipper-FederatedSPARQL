@@ -1,6 +1,7 @@
 package rdf;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.BasicConfigurator;
@@ -35,15 +36,19 @@ public class JoinSequenceDiff {
 		BasicConfigurator.configure();
 		ARQ.setExecutionLogging(Explain.InfoLevel.ALL) ;
 		
-		
+		//<http://dbpedia.org/resource/Tom_Hanks>
 		
 		Op triple1 = SSE.parseOp("(bgp (triple ?x <http://example/p> ?z))");
 		Op triple2 = SSE.parseOp("(bgp (triple ?x <http://example/q> ?z))");
 		Op service1 = SSE.parseOp("(service <http://dbpedia.org/sparql>" + 
-				"(bgp (triple <http://dbpedia.org/resource/Tom_Hanks> <http://dbpedia.org/ontology/birthDate> ?birth_date)))");
+				"(bgp (triple ?actor_name <http://dbpedia.org/ontology/birthDate> ?birth_date)))");
 		
-		Op service2 = SSE.parseOp("(service <http://dbpedia.org/sparql>" + 
-				"(bgp (triple ?actor <http://dbpedia.org/ontology/birthDate> ?birth_date )))");
+		Op service2 = SSE.parseOp("(service <http://data.linkedmdb.org/sparql>" + 
+      "(bgp" +
+        "(triple ?actor <http://data.linkedmdb.org/resource/movie/actor_name> ?actor_name)" + 
+        "(triple ?movie <http://data.linkedmdb.org/resource/movie/actor> ?actor)" + 
+        "(triple ?movie <http://purl.org/dc/terms/title> \"The Shining\")"+ 
+      "))");
 		
 		Op service3 = SSE.parseOp("(slice _ 100" +
   "(distinct" + 
@@ -56,18 +61,21 @@ public class JoinSequenceDiff {
 		System.out.println(joined);
 		
 		//SEQUENCE TIME
-		Op sequenced = OpSequence.create(service1, service2);
+		Op sequenced = OpSequence.create(service2, service1);
 		System.out.println(sequenced);
 		
 		//Op meat = makeOp();
 		
 		//want to try to execute service1
 		service3 = new OpService(NodeFactory.createURI("http://dbpedia.org/sparql"), service3, false);
-		executeThing(service3);
-		//executeThing(sequenced);
+		//executeThing(service3);
+		System.out.println("JOINED ");
+		//executeThing(joined);
+		System.out.println("SEQUENCED");
+		executeThing(sequenced, Arrays.asList("actor_name", "movie", "name", "birth_date"));
 	}
 	
-	public static void executeThing(Op op)	{
+	public static void executeThing(Op op, List<String> meat)	{
 
 		Model m = ModelFactory.createDefaultModel();
 		m.write(System.out, "TTL") ;
@@ -79,8 +87,10 @@ public class JoinSequenceDiff {
 		//Look at results
 		//Can read query iterator directly
 		List<String> varNames = new ArrayList<String>() ;
-        varNames.add("birth_date") ;
-        varNames.add("actor") ;
+        for (String var : meat)	{
+        	varNames.add(var);
+        }
+
         ResultSet rs = new ResultSetStream(varNames, m, qIter);
         ResultSetFormatter.out(rs) ;
         qIter.close() ;
