@@ -1,4 +1,3 @@
-rdf_sandbox
-===========
+SPARQL query optimization for federated queries
+==========
 
-A sandbox for rdf stuff
